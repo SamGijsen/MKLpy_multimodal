@@ -1,3 +1,38 @@
+This fork of MKLpy (see below) features the following edits:
+- facilitates multimodal use
+- enables use of AverageMKL for regression
+
+Multimodal modeling (using AverageMKL or EasyMKL) can be done as follows, where `N` is a list of length M in case of M modalities and `M[i]` denotes the amount of features belonging to modality `i`. 
+
+```py
+from MKLpy.utils.cv_wrappers import EasyMKLWrapper, AverageMKLWrapper, KernelTransformer
+from sklearn.svm import SVC
+from sklearn.model_selection import GridSearchCV, StratifiedKFold
+
+# Specify model and hyperparameters
+kernel_types=["rbf", "rbf"]
+
+pipeline = Pipeline([
+    ("scale", StandardScaler()),
+    ('kernel_transform', KernelTransformer(
+       N=[20, 10], norm_data=False, kernel_types=kernel_types)),
+    ('AvgMKL', AverageMKLWrapper(learner=SVC(probability=True), classification=True)) 
+])
+grid = {"AvgMKL__learner__C": [0.01, 1., 100.],
+        "kernel_transform__gamma": [0.001, 0.01, 0.1]}
+
+# Specify stratification
+cv = StratifiedKFold(3, shuffle=True, random_state=1)      
+cv_splits = cv.split(X_train, Y_train)
+
+# Cross-validation + Grid-search
+gs = GridSearchCV(estimator=pipeline, param_grid=grid, n_jobs=1,
+                  cv=cv_splits, return_train_score=True, refit=True, verbose=True)
+
+gs = gs.fit(Xtr, Ytr)
+```
+
+
 MKLpy
 =====
 

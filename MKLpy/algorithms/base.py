@@ -48,7 +48,8 @@ class MKL(BaseEstimator, ClassifierMixin):
 		verbose             = False,
 		tolerance           = 1e-7,
 		learner             = None,
-		max_iter			= -1
+		max_iter			= -1,
+		classification 		= True
 		):
 		
 		self.multiclass_strategy = multiclass_strategy # multiclass pattern ('ovo' or 'ovr')
@@ -56,6 +57,7 @@ class MKL(BaseEstimator, ClassifierMixin):
 		self.tolerance   = tolerance	# numerical tolerance
 		self.learner     = learner		# the base learner which uses the combined kernel
 		self.max_iter 	 = max_iter		# maximum number of iterations
+		self.classification = classification # regression is only valid for AverageMKL
 		
 		self.is_fitted   = False
 		self.multiclass_ = None
@@ -68,13 +70,17 @@ class MKL(BaseEstimator, ClassifierMixin):
 	def _prepare(self, KL, Y):
 		'''preprocess data before training'''
 		self.KL, self.Y = check_KL_Y(KL, Y)
-		check_classification_targets(Y)
+		# check_classification_targets(Y) # Disable as we want to allow regression.
 		self.n_kernels = len(self.KL)
 
-		self.classes_ = self.Y.unique()
-		if len(self.classes_) < 2:	# these algorithms are designed for classification only
-			raise ValueError("The number of classes has to be almost 2; got ", len(self.classes_))
-		self.multiclass_ = len(self.classes_) > 2
+		if self.classification:
+			self.classes_ = self.Y.unique()
+			if len(self.classes_) < 2:	# these algorithms are designed for classification only
+				raise ValueError("The number of classes has to be almost 2; got ", len(self.classes_))
+			self.multiclass_ = len(self.classes_) > 2
+		else:
+			self.classes_ = "regression"
+			self.multiclass_ = False
 		return
 
 
@@ -116,6 +122,7 @@ class MKL(BaseEstimator, ClassifierMixin):
 
 
 	def predict(self, KL):
+
 		if not self.is_fitted :
 			raise NotFittedError("The base learner is not fitted yet. Call 'fit' with appropriate arguments before using this method.")
 		if self.multiclass_:
@@ -131,11 +138,12 @@ class MKL(BaseEstimator, ClassifierMixin):
 			raise NotFittedError("The base learner is not fitted yet. Call 'fit' with appropriate arguments before using this method.")
 		if self.multiclass_:
 			return self.clf.decision_function(KL) 
+		elif not self.classification:
+			return self.score(KL)
 		elif self.learner: 
 			return self.learner.decision_function(self.func_form(KL,self.solution.weights))
 		else:
 			return self.score(KL)
-
 
 
 
