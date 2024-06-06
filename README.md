@@ -22,6 +22,7 @@ grid = {"AvgMKL__learner__C": [0.01, 1., 100.],
         "kernel_transform__gamma": [0.001, 0.01, 0.1]}
 
 # Specify stratification
+# X_train, Y_train are training data and labels respectively
 cv = StratifiedKFold(3, shuffle=True, random_state=1)      
 cv_splits = cv.split(X_train, Y_train)
 
@@ -29,7 +30,24 @@ cv_splits = cv.split(X_train, Y_train)
 gs = GridSearchCV(estimator=pipeline, param_grid=grid, n_jobs=1,
                   cv=cv_splits, return_train_score=True, refit=True, verbose=True)
 
-gs = gs.fit(Xtr, Ytr)
+gs = gs.fit(X_train, Y_train)
+```
+
+and for regression:
+
+```py
+from sklearn.svm import SVR
+
+pipeline = Pipeline([
+    ("scale", StandardScaler()),
+    ('kernel_transform', KernelTransformer(
+       N=[20, 10], norm_data=False, kernel_types=kernel_types)),
+    ('AvgMKL', AverageMKLWrapper(learner=SVR(), classification=False)) 
+])
+
+grid = {"AvgMKL__classification": [False], # !
+        "AvgMKL__learner__C": [0.01, 1., 100.],
+        "kernel_transform__gamma": [0.001, 0.01, 0.1]}
 ```
 
 
